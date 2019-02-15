@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>My Aplicación con Sockets</title>
+  <script  src="https://code.jquery.com/jquery-1.11.2.min.js"></script>
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="main.js"></script>
+</head>
+<body>
+
+
+  <h1>Upload Image</h1>
+ 
+<form action="/upload" method="post" enctype="multipart/form-data">
+        <input type="file" accept="image/*" name="photo" >
+        <input type="submit" value="upload">
+</form>
+
+
+
+  <div class="col-lg-4">
+  <video src="" id="video" style="width:300px;height:320px" 
+  autoplay="true"></video>
+</div>
+<div class="col-lg-4">
+  <canvas id="preview"></canvas>
+  <div id="logger"></div>
+</div>
+
+
+<div class="col-lg-4">
+  <input type="text" name="inputImage" id="inputImage"
+  value="http://upload.wikimedia.org/wikipedia/commons/3/3c/Shaki_waterfall.jpg" />
+  <button onclick="processImage()">Analyze image</button>
+      <br><br>
+   <div id="wrapper" style="width:300px; display:table;">
+  <div id="jsonOutput" style="width:600px; display:table-cell;">
+      Response:
+      <br><br>
+      <textarea id="responseTextArea" class="UIInput"
+              style="width:580px; height:400px;"></textarea>
+  </div>
+  <div id="imageDiv" style="width:420px; display:table-cell;">
+      Source image:
+      <br><br>
+      <img id="sourceImage" width="400" />
+      <img id="sourceImageServer" width="400" />
+  </div>
+  </div>
+</div>
+  <script type="text/javascript">
+  var canvas = document.getElementById("preview");
+  var context = canvas.getContext("2d");
+
+  canvas.width = 500;
+  canvas.height = 400;
+  context.width = canvas.width;
+  context.height = canvas.height;
+  
+  var video = document.getElementById("video");
+
+  var imageserver ;
+  
+  var socket = io();
+  var sourceImageUrl;
+
+  function logger(msg)
+  {
+      $("#logger").text(msg);
+  }
+
+  function loadCam(stream)
+  {
+      alert('entro a capturar la camara');
+      //video.src = window.URL.createObjectURL(stream);
+      video.srcObject =stream;
+      logger('Camara cargada');
+  }
+
+  function loadFail(stream)
+  {
+      logger('Camara no cargada')
+  }
+
+  function viewVideo(video,context)
+  {
+      context.drawImage(video,0,0,context.width,context.height);
+      socket.emit('stream',canvas.toDataURL('image/webp'));
+}
+
+function processImage(){
+
+  
+   // Display the image.
+   var image = document.getElementById("preview").toDataURL("image/png");
+       sourceImageUrl = image;
+       //console.log(sourceImageUrl)
+       document.querySelector("#sourceImage").src = sourceImageUrl;
+
+  $.ajax({
+          type: "POST",
+          url: "/uploadPhoto",
+          data: { 
+              imgBase64: sourceImageUrl,
+              fileName:'testlm'
+          }
+      }).done(function(o) {
+        console.log(o)
+        imageserver = "http://186.86.51.215:56345/assets/img/people.png";
+        console.log(imageserver)
+        alert('guardo imagen bytes');
+        getVisioAZure(imageserver);
+      })  .fail(function(jqXHR, textStatus, errorThrown) {
+      // Display error message.
+      alert('error imagen bytes');
+  });;
+
+     
+  
+}
+
+function getVisioAZure(imagefromserver){
+// Request parameters.
+var params = {
+      "visualFeatures": "Categories,Tags,Description,Color,Faces,ImageType,Adult",
+      "details": "",
+      "language": "es",
+  };
+
+  var subscriptionKey = "6ccfe7e6db4547b18a41909918b14bed";
+  var uriBase ="https://southcentralus.api.cognitive.microsoft.com/vision/v2.0/analyze";
+
+    $.ajax({
+
+    url: uriBase + "?" + $.param(params),
+
+    // Request headers.
+    beforeSend: function(xhrObj){
+    xhrObj.setRequestHeader("Content-Type","application/json");
+    xhrObj.setRequestHeader(
+        "Ocp-Apim-Subscription-Key", subscriptionKey);
+    },
+
+    type: "POST",
+
+    // Request body.
+    data: '{"url": ' + '"' + imagefromserver + '"}',
+    })
+
+    .done(function(data) {
+
+      document.querySelector("#sourceImageServer").src = imagefromserver;
+    // Show formatted JSON on webpage.
+    $("#responseTextArea").val(JSON.stringify(data, null, 2));
+    })
+
+    .fail(function(jqXHR, textStatus, errorThrown) {
+    // Display error message.
+    var errorString = (errorThrown === "") ? "Error. " :
+    errorThrown + " (" + jqXHR.status + "): ";
+    errorString += (jqXHR.responseText === "") ? "" :
+    jQuery.parseJSON(jqXHR.responseText).message;
+    alert(errorString);
+    });
+
+
+}
+  
+
+  $(function(){
+      navigator.getUserMedia = (navigator.getUserMedia
+       || navigator.webkitGetUserMedia || navigator.mozGetUserMedia 
+       || navigator.msgGetUserMedia);
+
+       if(navigator.getUserMedia)
+      {
+          //logger();
+          navigator.getUserMedia({video: true},loadCam,loadFail);
+      } 
+
+      setInterval(function(){viewVideo(video,context) },1000);
+     // function processImage() {
+      
+  })
+  </script>
+
+
+
+         
+</body>
+</html>
