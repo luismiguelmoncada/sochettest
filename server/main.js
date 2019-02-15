@@ -37,6 +37,9 @@ var dbConfig = {
 
 app.use(express.static('public'));
 
+
+
+
 //esto es para leer el objeto data desde AJAX
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({
